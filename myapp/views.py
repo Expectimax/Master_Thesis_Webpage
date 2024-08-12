@@ -630,7 +630,7 @@ def gallery_intuitive(request):
         if request.method == 'POST':
 
             request_post_string = str(request.POST)
-            if '.jpeg_' in request_post_string:
+            if '.jpeg' in request_post_string:
                 if Results.objects.filter(user_session_id=session_id).exists():
                     result = Results.objects.get(user_session_id=session_id)
                     if result.answers_intuitive == {}:
