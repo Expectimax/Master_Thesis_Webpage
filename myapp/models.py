@@ -24,7 +24,6 @@ class Image(models.Model):
 
 
 class Visitors(models.Model):
-    mturk_id = models.CharField(max_length=200, null=False, blank=False, default='no_user_id')
     session_id = models.CharField(max_length=40, null=False, blank=False, default='no_session_id')
     experiment_group = models.CharField(max_length=20, null=False, blank=False, default='no_group_assigned')
     gender = models.CharField(max_length=20, null=False, blank=False, default='no_gender')
@@ -213,3 +212,8 @@ class AnswersIntuitiveDelegate(models.Model):
 class AnswersIntuitiveBase(models.Model):
     experiment = models.ForeignKey(Experiment, on_delete=models.SET_NULL, null=True)
     text = models.CharField(max_length=30, null=False, blank=False, choices=INTUITIVE_CHOICES_BASE)
+
+
+class CompletionCode(models.Model):
+    code = models.CharField(max_length=30, null=False, blank=False, primary_key=True)
+    assigned = models.BooleanField(default=False)

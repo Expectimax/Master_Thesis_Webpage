@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from .models import (Experiment, Image, AnswersFormalDelegate, AnswersSocialDelegate, AnswersPhenoDelegate,
                      AnswersIntuitiveDelegate, Visitors, Results, AnswersIntuitiveBase, AnswersPhenoBase,
                      AnswersSocialBase, AnswersFormalBase, FeedbackResultsFormal, FeedbackResultsSocial,
-                     FeedbackResultsPheno, FeedbackResultsIntuitive, ExperimentSessionID)
+                     FeedbackResultsPheno, FeedbackResultsIntuitive, ExperimentSessionID, CompletionCode)
 
 
 def home(request):
@@ -64,7 +64,6 @@ def user_data_input(request):
         competency = data['Competency']
         print(str(data))
 
-
         if exp_group == 'human_delegate' or exp_group == 'feedback' or exp_group == 'delegation_counter':
             expectation = data['Expectations']
         else:
@@ -85,8 +84,9 @@ def user_data_input(request):
 
         if (country == 'no_country' or age == -1 or antibot == 6 or gender == 'no_gender' or
                 competency == 'no_competency' or expectation == 6):
-            messages.warning(request, 'You did not answer all the questions. Your answers from before were not saved, therefore please '
-                                      'answer all the questions again. Sorry for the inconvenience.',
+            messages.warning(request,
+                             'You did not answer all the questions. Your answers from before were not saved, therefore please '
+                             'answer all the questions again. Sorry for the inconvenience.',
                              extra_tags='information_error')
             return redirect('user_data_input')
         else:
@@ -744,6 +744,10 @@ def add_image(request):
 
 
 def final_page(request):
+    codes = CompletionCode.objects.filter(assigned=False)
+    code = random.choice(codes)
+    code_str = code.code
+    CompletionCode.objects.filter(code=code).update(assigned=True)
     if not request.session.exists(request.session.session_key):
         request.session.create()
     session_id = request.session.session_key
@@ -758,7 +762,7 @@ def final_page(request):
             social_complexity = data['SocialComplexity']
             pheno_complexity = data['PhenoComplexity']
             intuitive_complexity = data['IntuitiveComplexity']
-            mturk_id = data['inputID']
+
             if exp_group == 'feedback' or exp_group == 'human_delegate' or exp_group == 'delegation_counter':
                 perceived_help = data['PerceivedHelp']
             else:
@@ -774,13 +778,12 @@ def final_page(request):
                 intuitive_complexity = 6
             if perceived_help == 'How helpful was the AI?':
                 perceived_help = 6
-            if mturk_id == '':
-                mturk_id = 'no_mturk_id'
 
             if (formal_complexity == 6 or social_complexity == 6 or pheno_complexity == 6 or pheno_complexity == 6 or
                     intuitive_complexity == 6 or perceived_help == 6):
-                messages.warning(request, 'You did not answer all the questions. Your answers from before were not saved, therefore please '
-                                          'answer all the questions again. Sorry for the inconvenience.',
+                messages.warning(request,
+                                 'You did not answer all the questions. Your answers from before were not saved, therefore please '
+                                 'answer all the questions again. Sorry for the inconvenience.',
                                  extra_tags='information_error')
                 return redirect('final_page')
             else:
@@ -800,14 +803,13 @@ def final_page(request):
                                 complexity_social=social_complexity,
                                 complexity_pheno=pheno_complexity,
                                 complexity_intuitive=intuitive_complexity,
-                                perceived_help=perceived_help,
-                                mturk_id=mturk_id)
+                                perceived_help=perceived_help)
 
                             messages.success(request,
                                              'You submitted all your answers successfully. This is the end of the '
                                              'experiment. Thank you very much for your participation. You can '
                                              'close this window now!', extra_tags='information_success')
-                            return redirect('final_page')
+                            return redirect('home')
                         else:
                             chosen = check_inputs_and_return_next_one(session_id, request)
                             return redirect(chosen)
@@ -821,7 +823,8 @@ def final_page(request):
         chosen = check_inputs_and_return_next_one(session_id, request)
         return redirect(chosen)
 
-    context = {'experiment_group': exp_group}
+    context = {'experiment_group': exp_group,
+               'survey_code': code_str, }
     return render(request, 'myapp/final_page.html', context)
 
 
@@ -847,6 +850,21 @@ def update_model_fields(request):
                                                        )
 
     return render(request, 'myapp/update_model_fields.html')
+
+
+def add_completion_codes(request):
+    if not request.user.is_authenticated:
+        messages.warning(request, 'You are not logged in!', extra_tags='information_warning')
+        return redirect('home')
+    else:
+        if request.method == 'POST':
+            filename = request.FILES.get('excel')
+            data = pd.read_excel(filename)
+            for i in data.index:
+                code = data.loc[i, 'Code']
+                CompletionCode.objects.create(code=code, assigned=False)
+
+    return render(request, 'myapp/add_completion_codes.html')
 
 
 def get_results_from_radio(request):
@@ -1548,10 +1566,14 @@ def update_task_order(session_id, experiment):
 
 def count_delegates(data_json):
     data_dict = json.loads(data_json)
+    print('data_dict_non_feedback', data_dict)
     data_str = str(data_dict)[1:-1]
+    print('data_str_non_feedback', data_str)
     string_list = data_str.split(',')
+    print('string_list_non_feedback', string_list)
     answer_list = []
     for string in string_list:
+        print(string)
         answer = string.split(':')[1][2:-1]
         answer_list.append(answer)
     nr_delegates = answer_list.count('delegate to the AI')
@@ -1560,10 +1582,14 @@ def count_delegates(data_json):
 
 def count_delegates_feedback(data_json):
     data_dict = json.loads(data_json)
+    print(data_dict)
     data_str = str(data_dict)[2:-1]
+    print(data_str)
     string_list = data_str.split(',')
+    print(string_list)
     answer_list = []
     for string in string_list:
+        print(string)
         answer = string.split(':')[1][2:-2]
         answer_list.append(answer)
     nr_delegates = answer_list.count('delegate to the AI')
@@ -1604,8 +1630,7 @@ def set_image_attribute_seen(session_id, experiment):
             image_json = visitor.pheno_images
         else:
             image_json = visitor.intuitive_images
-        print(image_json)
-        print(type(image_json))
+
         image_list = json.loads(image_json)
 
         for image_name in image_list:

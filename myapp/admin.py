@@ -6,7 +6,7 @@ from import_export.admin import ImportExportModelAdmin
 from .models import (Experiment, Image, AnswersFormalDelegate, AnswersPhenoDelegate, AnswersIntuitiveDelegate,
                      AnswersSocialDelegate, Visitors, Results, AnswersSocialBase, AnswersFormalBase, AnswersPhenoBase,
                      AnswersIntuitiveBase, FeedbackResultsFormal, FeedbackResultsIntuitive, FeedbackResultsPheno,
-                     FeedbackResultsSocial, ExperimentSessionID)
+                     FeedbackResultsSocial, ExperimentSessionID, CompletionCode)
 
 
 class ResultResource(resources.ModelResource):
@@ -46,5 +46,6 @@ admin.site.register(FeedbackResultsIntuitive)
 admin.site.register(FeedbackResultsPheno)
 admin.site.register(FeedbackResultsSocial)
 admin.site.register(ExperimentSessionID)
+admin.site.register(CompletionCode)
 
 

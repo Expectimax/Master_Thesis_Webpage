@@ -12,4 +12,5 @@ urlpatterns = [
     path("add_image/", views.add_image, name='add_image'),
     path("final_page/", views.final_page, name='final_page'),
     path("update_model_fields/", views.update_model_fields, name='update_model_fields'),
+    path("add_completion_codes/", views.add_completion_codes, name='add_completion_codes'),
 ]
